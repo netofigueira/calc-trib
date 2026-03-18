@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ArbiTrib — Calculadora Tributária PF vs PJ</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-icon">⚖️</span>
+        <div>
+          <h1>ArbiTrib</h1>
+          <p>Calculadora de Arbitragem Tributária · PF vs PJ/Holding</p>
+        </div>
+      </div>
+      <div class="header-badge">MVP v1.0</div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- ─── PAINEL DE PARÂMETROS ─── -->
+    <aside class="panel-form">
+      <form id="calc-form" autocomplete="off">
+
+        <div class="form-section">
+          <h3>Capital &amp; Retorno</h3>
+
+          <div class="field">
+            <label for="capital_inicial">Capital Inicial (R$)</label>
+            <input type="number" id="capital_inicial" name="capital_inicial"
+              value="1000000" min="1" step="any" required />
+          </div>
+
+          <div class="field">
+            <label for="rentabilidade_anual">
+              Rentabilidade Anual
+              <span class="field-value" id="lbl-rent">10%</span>
+            </label>
+            <input type="range" id="rentabilidade_anual" name="rentabilidade_anual"
+              min="2" max="20" step="0.5" value="10"
+              oninput="document.getElementById('lbl-rent').textContent = this.value + '%'" />
+          </div>
+
+          <div class="field">
+            <label for="horizonte_anos">
+              Horizonte de Tempo
+              <span class="field-value" id="lbl-hor">10 anos</span>
+            </label>
+            <input type="range" id="horizonte_anos" name="horizonte_anos"
+              min="1" max="30" step="1" value="10"
+              oninput="document.getElementById('lbl-hor').textContent = this.value + ' anos'" />
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Parâmetros Tributários</h3>
+
+          <div class="field">
+            <label for="ir_pf_rate">
+              IR PF — Tabela Regressiva
+              <span class="field-value" id="lbl-irpf">15%</span>
+            </label>
+            <input type="range" id="ir_pf_rate" name="ir_pf_rate"
+              min="15" max="22.5" step="0.5" value="15"
+              oninput="document.getElementById('lbl-irpf').textContent = this.value + '%'" />
+            <small>15% (longo prazo) · 22,5% (curto prazo)</small>
+          </div>
+
+          <div class="field">
+            <label for="ir_pj_rate">
+              IRPJ + CSLL
+              <span class="field-value" id="lbl-irpj">34%</span>
+            </label>
+            <input type="range" id="ir_pj_rate" name="ir_pj_rate"
+              min="20" max="50" step="1" value="34"
+              oninput="document.getElementById('lbl-irpj').textContent = this.value + '%'" />
+            <small>Lucro Presumido padrão: 34%</small>
+          </div>
+
+          <div class="field">
+            <label for="taxa_dividendos">
+              Alíquota Dividendos
+              <span class="field-value" id="lbl-div">10%</span>
+            </label>
+            <input type="range" id="taxa_dividendos" name="taxa_dividendos"
+              min="0" max="20" step="1" value="10"
+              oninput="document.getElementById('lbl-div').textContent = this.value + '%'" />
+            <small>Lei 14.754/2023 — novo adicional</small>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Estrutura PJ/Holding</h3>
+
+          <div class="field">
+            <label for="overhead_anual">Custos Operacionais Anuais (R$)</label>
+            <input type="number" id="overhead_anual" name="overhead_anual"
+              value="70000" min="0" step="any" />
+            <small>Contabilidade, manutenção, jurídico…</small>
+          </div>
+
+          <div class="field">
+            <label for="taxa_distribuicao">
+              Distribuição Anual de Lucros
+              <span class="field-value" id="lbl-dist">50%</span>
+            </label>
+            <input type="range" id="taxa_distribuicao" name="taxa_distribuicao"
+              min="0" max="100" step="5" value="50"
+              oninput="document.getElementById('lbl-dist').textContent = this.value + '%'" />
+          </div>
+
+          <div class="field field-toggle">
+            <label class="toggle-label">
+              <input type="checkbox" id="usar_deferimento" name="usar_deferimento" />
+              <span class="toggle-track"></span>
+              Diferimento Tributário
+            </label>
+            <small>PJ compõe sobre lucro bruto; IRPJ pago apenas na liquidação final.</small>
+          </div>
+        </div>
+
+        <button type="submit" id="btn-calcular">
+          <span id="btn-text">Calcular</span>
+          <span id="btn-spinner" class="spinner hidden"></span>
+        </button>
+
+      </form>
+    </aside>
+
+    <!-- ─── PAINEL DE RESULTADOS ─── -->
+    <main class="panel-results" id="panel-results">
+
+      <!-- Placeholder inicial -->
+      <div class="placeholder" id="placeholder">
+        <div class="placeholder-icon">📊</div>
+        <h2>Configure os parâmetros ao lado</h2>
+        <p>O sistema calculará o Valor Futuro Líquido (VFL) para os dois cenários
+          e identificará a estrutura mais eficiente para o horizonte informado.</p>
+        <ul class="placeholder-list">
+          <li>✔ Tax Drag (arrasto tributário)</li>
+          <li>✔ Evolução patrimonial ano a ano</li>
+          <li>✔ Comparação PF vs PJ/Holding</li>
+          <li>✔ Benefício do diferimento tributário</li>
+        </ul>
+      </div>
+
+      <!-- Resultados (inicialmente escondido) -->
+      <div id="results" class="hidden">
+
+        <!-- Veredicto -->
+        <div id="verdict-banner" class="verdict-banner">
+          <div class="verdict-icon" id="verdict-icon">🏆</div>
+          <div>
+            <div class="verdict-title" id="verdict-title">—</div>
+            <div class="verdict-sub" id="verdict-sub">—</div>
+          </div>
+        </div>
+
+        <!-- Cards de resumo -->
+        <div class="cards-grid">
+          <div class="card card-pf">
+            <div class="card-label">VFL · Pessoa Física</div>
+            <div class="card-value" id="card-vfl-pf">—</div>
+            <div class="card-detail" id="card-detail-pf">—</div>
+          </div>
+          <div class="card card-pj">
+            <div class="card-label" id="card-label-pj">VFL · PJ/Holding</div>
+            <div class="card-value" id="card-vfl-pj">—</div>
+            <div class="card-detail" id="card-detail-pj">—</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Tax Drag PF</div>
+            <div class="card-value" id="card-td-pf">—</div>
+            <div class="card-detail">% do retorno bruto em impostos</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Tax Drag PJ</div>
+            <div class="card-value" id="card-td-pj">—</div>
+            <div class="card-detail">% do retorno bruto em impostos</div>
+          </div>
+        </div>
+
+        <!-- Gráfico de evolução patrimonial -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3>Evolução Patrimonial</h3>
+            <div class="chart-tabs">
+              <button class="tab-btn active" data-mode="patrimonio" onclick="switchChart(this)">Patrimônio</button>
+              <button class="tab-btn" data-mode="impostos" onclick="switchChart(this)">Impostos Acumulados</button>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="mainChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Tabela detalhada com tabs -->
+        <div class="table-card">
+          <div class="table-header">
+            <h3>Detalhamento Ano a Ano</h3>
+            <div class="chart-tabs">
+              <button class="tab-btn active" onclick="switchTable('pf', this)">Pessoa Física</button>
+              <button class="tab-btn" onclick="switchTable('pj', this)">PJ/Holding</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="table-pf">
+              <thead>
+                <tr>
+                  <th>Ano</th>
+                  <th>Saldo Inicial</th>
+                  <th>Retorno Bruto</th>
+                  <th>IR / Impostos</th>
+                  <th>Dist. Dividendos</th>
+                  <th>Imp. Dividendos</th>
+                  <th>Reinvestido</th>
+                  <th>Saldo Final</th>
+                  <th>Patrimônio Total</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-pf"></tbody>
+            </table>
+            <table id="table-pj" class="hidden">
+              <thead>
+                <tr>
+                  <th>Ano</th>
+                  <th>Saldo Inicial</th>
+                  <th>Retorno Bruto</th>
+                  <th>IRPJ/CSLL</th>
+                  <th>Overhead</th>
+                  <th>Dist. Dividendos</th>
+                  <th>Imp. Dividendos</th>
+                  <th>Reinvestido</th>
+                  <th>Saldo Final</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-pj"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /results -->
+    </main>
+
+  </div><!-- /layout -->
+
+  <footer>
+    <p>ArbiTrib MVP · Baseado na Lei 14.754/2023 e parâmetros do Lucro Presumido PJ.
+      Não substitui assessoria tributária profissional.</p>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
