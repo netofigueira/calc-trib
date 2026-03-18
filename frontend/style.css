@@ -387,6 +387,104 @@ footer {
   background: var(--surface);
 }
 
+/* ─── ITCMD Card ─── */
+.itcmd-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  box-shadow: var(--shadow);
+  margin-bottom: 1.25rem;
+}
+.itcmd-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  gap: 1rem;
+}
+.itcmd-header h3 { font-size: .9rem; font-weight: 700; }
+.itcmd-sub { font-size: .75rem; color: var(--text-2); margin-top: .2rem; }
+.itcmd-badge {
+  font-size: .72rem;
+  font-weight: 700;
+  padding: .3rem .75rem;
+  border-radius: 99px;
+  white-space: nowrap;
+  background: var(--green-light);
+  color: var(--green);
+  border: 1px solid #bbf7d0;
+}
+.itcmd-badge.pf {
+  background: var(--blue-light);
+  color: var(--blue);
+  border-color: #bfdbfe;
+}
+
+.itcmd-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 900px) {
+  .itcmd-grid { grid-template-columns: 1fr; }
+}
+
+.itcmd-col {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: .9rem 1rem;
+}
+.itcmd-col-pf  { border-top: 3px solid var(--pf-color); }
+.itcmd-col-pj  { border-top: 3px solid var(--pj-color); }
+.itcmd-col-economia {
+  border-top: 3px solid var(--amber);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: .5rem;
+}
+
+.itcmd-col-title {
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-3);
+  margin-bottom: .75rem;
+}
+.itcmd-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .3rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: .8rem;
+  gap: .5rem;
+}
+.itcmd-row span { color: var(--text-2); }
+.itcmd-row strong { font-weight: 700; text-align: right; }
+.itcmd-row em { font-style: normal; font-size: .7rem; color: var(--text-3); }
+.itcmd-row-total {
+  border-bottom: none;
+  padding-top: .5rem;
+  margin-top: .25rem;
+  font-size: .85rem;
+}
+.itcmd-row-total strong { font-size: .95rem; color: var(--text); }
+
+.itcmd-economia-valor {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--green);
+  letter-spacing: -.5px;
+}
+.itcmd-economia-valor.negativo { color: var(--red); }
+.itcmd-economia-sub { font-size: .75rem; color: var(--text-2); }
+
 /* ─── Utilities ─── */
 .hidden { display: none !important; }
 

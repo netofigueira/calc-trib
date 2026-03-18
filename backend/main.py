@@ -31,6 +31,8 @@ class CalculadoraInput(BaseModel):
     taxa_distribuicao: float = Field(0.50, ge=0, le=1, description="% do lucro distribuído como dividendos anualmente")
     usar_deferimento: bool = Field(False, description="PJ com diferimento tributário (compõe sobre bruto, IR só no final)")
     taxa_dividendos: float = Field(0.10, ge=0, le=0.30, description="Alíquota sobre dividendos (Lei 14.754/2023)")
+    itcmd_max_rate: float = Field(0.08, ge=0, le=0.20, description="Alíquota ITCMD máxima (8% atual, até 16% reforma)")
+    desconto_quota_holding: float = Field(0.20, ge=0, le=0.50, description="Desconto na base ITCMD das quotas da holding")
 
 
 def _fmt_ano(a) -> dict:
@@ -60,6 +62,8 @@ def calcular(data: CalculadoraInput):
         taxa_distribuicao=data.taxa_distribuicao,
         usar_deferimento=data.usar_deferimento,
         taxa_dividendos=data.taxa_dividendos,
+        itcmd_max_rate=data.itcmd_max_rate,
+        desconto_quota_holding=data.desconto_quota_holding,
     )
 
     return {
@@ -79,6 +83,19 @@ def calcular(data: CalculadoraInput):
         "total_distribuido_pj": round(r.pj.total_distribuido_liquido, 2),
         "anos_pf": [_fmt_ano(a) for a in r.pf.anos],
         "anos_pj": [_fmt_ano(a) for a in r.pj.anos],
+        "itcmd": {
+            "base_pf": round(r.itcmd.base_pf, 2),
+            "base_pj": round(r.itcmd.base_pj, 2),
+            "itcmd_pf": round(r.itcmd.itcmd_pf, 2),
+            "itcmd_pj": round(r.itcmd.itcmd_pj, 2),
+            "economia": round(r.itcmd.economia, 2),
+            "aliquota_efetiva_pf": round(r.itcmd.aliquota_efetiva_pf, 2),
+            "aliquota_efetiva_pj": round(r.itcmd.aliquota_efetiva_pj, 2),
+            "vfl_pos_sucessao_pf": round(r.itcmd.vfl_pos_sucessao_pf, 2),
+            "vfl_pos_sucessao_pj": round(r.itcmd.vfl_pos_sucessao_pj, 2),
+            "vencedor_sucessao": r.itcmd.vencedor_sucessao,
+            "diferenca_sucessao": round(r.itcmd.diferenca_sucessao, 2),
+        },
         "parametros": {
             "capital_inicial": data.capital_inicial,
             "rentabilidade_anual": data.rentabilidade_anual,
@@ -89,6 +106,8 @@ def calcular(data: CalculadoraInput):
             "taxa_distribuicao": data.taxa_distribuicao,
             "usar_deferimento": data.usar_deferimento,
             "taxa_dividendos": data.taxa_dividendos,
+            "itcmd_max_rate": data.itcmd_max_rate,
+            "desconto_quota_holding": data.desconto_quota_holding,
         },
     }
 

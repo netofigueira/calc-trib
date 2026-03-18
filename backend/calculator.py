@@ -5,10 +5,52 @@ Lógica baseada em:
   - Tabela regressiva IR PF (15% a 22.5%)
   - Lucro Presumido PJ: IRPJ + CSLL (~34%)
   - Modelo de diferimento: imposto diferido até liquidação final
+  - ITCMD progressivo com desconto de quota holding
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List
+
+# ─── Faixas ITCMD ────────────────────────────────────────────────────────────
+# Cada tupla: (limite_superior_R$, fração_da_alíquota_máxima)
+# Com alíquota_max=8%: faixas viram 2%, 4%, 6%, 8%
+# Com alíquota_max=16% (reforma): viram 4%, 8%, 12%, 16%
+_FAIXAS_ITCMD = [
+    (200_000,       0.25),
+    (600_000,       0.50),
+    (1_500_000,     0.75),
+    (float('inf'),  1.00),
+]
+
+
+def calcular_itcmd_progressivo(base: float, aliquota_max: float) -> float:
+    """
+    Calcula o ITCMD progressivo sobre a base informada.
+
+    As faixas são proporcionais à alíquota_max configurada:
+      - Até R$200k    → aliquota_max × 25%
+      - R$200k-600k   → aliquota_max × 50%
+      - R$600k-1,5M   → aliquota_max × 75%
+      - Acima R$1,5M  → aliquota_max × 100%
+
+    Exemplo com aliquota_max=0.08 (8%):
+      base R$2M → 200k×2% + 400k×4% + 900k×6% + 500k×8%
+                = 4k + 16k + 54k + 40k = R$114k → alíquota efetiva ~5,7%
+    """
+    if base <= 0 or aliquota_max <= 0:
+        return 0.0
+
+    imposto = 0.0
+    faixa_anterior = 0.0
+
+    for limite, fracao in _FAIXAS_ITCMD:
+        if base <= faixa_anterior:
+            break
+        tributavel = min(base, limite) - faixa_anterior
+        imposto += tributavel * (aliquota_max * fracao)
+        faixa_anterior = limite
+
+    return imposto
 
 
 @dataclass
@@ -36,17 +78,33 @@ class CenarioData:
 
 
 @dataclass
+class ItcmdData:
+    base_pf: float          # saldo_final_pf (patrimônio transmitido)
+    base_pj: float          # saldo_final_pj × (1 - desconto_quota)
+    itcmd_pf: float
+    itcmd_pj: float
+    economia: float         # itcmd_pf - itcmd_pj (positivo = holding economiza)
+    aliquota_efetiva_pf: float
+    aliquota_efetiva_pj: float
+    vfl_pos_sucessao_pf: float   # VFL total - ITCMD
+    vfl_pos_sucessao_pj: float
+    vencedor_sucessao: str
+    diferenca_sucessao: float
+
+
+@dataclass
 class ResultadoComparativo:
     pf: CenarioData
     pj: CenarioData
     vencedor: str
     diferenca_absoluta: float
     diferenca_percentual: float
-    tax_drag_pf: float   # % do retorno bruto total pago em impostos (PF)
-    tax_drag_pj: float   # % do retorno bruto total pago em impostos (PJ)
+    tax_drag_pf: float
+    tax_drag_pj: float
     capital_inicial: float
     rentabilidade_anual: float
     horizonte_anos: int
+    itcmd: ItcmdData
 
 
 def _calcular_cenario(
@@ -162,6 +220,8 @@ def calcular_comparativo(
     taxa_distribuicao: float,
     usar_deferimento: bool = False,
     taxa_dividendos: float = 0.10,
+    itcmd_max_rate: float = 0.08,
+    desconto_quota_holding: float = 0.20,
 ) -> ResultadoComparativo:
 
     pf = _calcular_cenario(
@@ -198,6 +258,35 @@ def calcular_comparativo(
     tax_drag_pf = (pf.total_impostos / retorno_total_pf * 100) if retorno_total_pf > 0 else 0.0
     tax_drag_pj = (pj.total_impostos / retorno_total_pj * 100) if retorno_total_pj > 0 else 0.0
 
+    # ── ITCMD progressivo ────────────────────────────────────────────────────
+    # Base PF: patrimônio total no portfólio ao final (saldo reinvestido)
+    # Base PJ: saldo com desconto de quota (avaliação por valor de livro)
+    base_itcmd_pf = pf.saldo_final
+    base_itcmd_pj = pj.saldo_final * (1.0 - desconto_quota_holding)
+
+    itcmd_pf = calcular_itcmd_progressivo(base_itcmd_pf, itcmd_max_rate)
+    itcmd_pj = calcular_itcmd_progressivo(base_itcmd_pj, itcmd_max_rate)
+
+    aliq_ef_pf = (itcmd_pf / base_itcmd_pf * 100) if base_itcmd_pf > 0 else 0.0
+    aliq_ef_pj = (itcmd_pj / base_itcmd_pj * 100) if base_itcmd_pj > 0 else 0.0
+
+    vfl_pos_suc_pf = pf.vfl - itcmd_pf
+    vfl_pos_suc_pj = pj.vfl - itcmd_pj
+
+    itcmd = ItcmdData(
+        base_pf=base_itcmd_pf,
+        base_pj=base_itcmd_pj,
+        itcmd_pf=itcmd_pf,
+        itcmd_pj=itcmd_pj,
+        economia=itcmd_pf - itcmd_pj,
+        aliquota_efetiva_pf=aliq_ef_pf,
+        aliquota_efetiva_pj=aliq_ef_pj,
+        vfl_pos_sucessao_pf=vfl_pos_suc_pf,
+        vfl_pos_sucessao_pj=vfl_pos_suc_pj,
+        vencedor_sucessao="PJ/Holding" if vfl_pos_suc_pj > vfl_pos_suc_pf else "Pessoa Física",
+        diferenca_sucessao=vfl_pos_suc_pj - vfl_pos_suc_pf,
+    )
+
     return ResultadoComparativo(
         pf=pf,
         pj=pj,
@@ -209,4 +298,5 @@ def calcular_comparativo(
         capital_inicial=capital_inicial,
         rentabilidade_anual=rentabilidade_anual,
         horizonte_anos=horizonte_anos,
+        itcmd=itcmd,
     )

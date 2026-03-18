@@ -125,6 +125,32 @@
           </div>
         </div>
 
+        <div class="form-section">
+          <h3>Análise Sucessória · ITCMD</h3>
+
+          <div class="field">
+            <label for="itcmd_max_rate">
+              Alíquota ITCMD Máxima
+              <span class="field-value" id="lbl-itcmd">8%</span>
+            </label>
+            <input type="range" id="itcmd_max_rate" name="itcmd_max_rate"
+              min="2" max="16" step="1" value="8"
+              oninput="document.getElementById('lbl-itcmd').textContent = this.value + '%'" />
+            <small>Atual: até 8% · Reforma proposta: até 16%</small>
+          </div>
+
+          <div class="field">
+            <label for="desconto_quota_holding">
+              Desconto de Quota Holding
+              <span class="field-value" id="lbl-dq">20%</span>
+            </label>
+            <input type="range" id="desconto_quota_holding" name="desconto_quota_holding"
+              min="0" max="40" step="5" value="20"
+              oninput="document.getElementById('lbl-dq').textContent = this.value + '%'" />
+            <small>Reduz a base ITCMD das quotas (valor de livro vs mercado).</small>
+          </div>
+        </div>
+
         <button type="submit" id="btn-calcular">
           <span id="btn-text">Calcular</span>
           <span id="btn-spinner" class="spinner hidden"></span>
@@ -197,6 +223,65 @@
           </div>
           <div class="chart-wrap">
             <canvas id="mainChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Análise Sucessória ITCMD -->
+        <div class="itcmd-card">
+          <div class="itcmd-header">
+            <div>
+              <h3>Análise Sucessória · ITCMD Progressivo</h3>
+              <p class="itcmd-sub">Impacto na transmissão do patrimônio aos herdeiros</p>
+            </div>
+            <div id="itcmd-verdict-badge" class="itcmd-badge">—</div>
+          </div>
+
+          <div class="itcmd-grid">
+            <div class="itcmd-col itcmd-col-pf">
+              <div class="itcmd-col-title">Pessoa Física</div>
+              <div class="itcmd-row">
+                <span>Base de Cálculo</span>
+                <strong id="itcmd-base-pf">—</strong>
+              </div>
+              <div class="itcmd-row">
+                <span>ITCMD</span>
+                <strong class="td-negative" id="itcmd-valor-pf">—</strong>
+              </div>
+              <div class="itcmd-row">
+                <span>Alíquota Efetiva</span>
+                <strong id="itcmd-aliq-pf">—</strong>
+              </div>
+              <div class="itcmd-row itcmd-row-total">
+                <span>VFL Pós-Sucessão</span>
+                <strong id="itcmd-vfl-suc-pf">—</strong>
+              </div>
+            </div>
+
+            <div class="itcmd-col itcmd-col-pj">
+              <div class="itcmd-col-title" id="itcmd-col-title-pj">PJ/Holding</div>
+              <div class="itcmd-row">
+                <span>Base de Cálculo <em id="itcmd-desc-label">(c/ desconto)</em></span>
+                <strong id="itcmd-base-pj">—</strong>
+              </div>
+              <div class="itcmd-row">
+                <span>ITCMD</span>
+                <strong class="td-negative" id="itcmd-valor-pj">—</strong>
+              </div>
+              <div class="itcmd-row">
+                <span>Alíquota Efetiva</span>
+                <strong id="itcmd-aliq-pj">—</strong>
+              </div>
+              <div class="itcmd-row itcmd-row-total">
+                <span>VFL Pós-Sucessão</span>
+                <strong id="itcmd-vfl-suc-pj">—</strong>
+              </div>
+            </div>
+
+            <div class="itcmd-col itcmd-col-economia">
+              <div class="itcmd-col-title">Economia com Holding</div>
+              <div class="itcmd-economia-valor" id="itcmd-economia">—</div>
+              <div class="itcmd-economia-sub" id="itcmd-economia-sub">—</div>
+            </div>
           </div>
         </div>
 

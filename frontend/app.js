@@ -196,6 +196,9 @@ function renderResults(data) {
   document.getElementById('card-td-pf').textContent = PCT(data.tax_drag_pf);
   document.getElementById('card-td-pj').textContent = PCT(data.tax_drag_pj);
 
+  // ITCMD
+  renderItcmd(data);
+
   // Chart
   renderChart(data, 'patrimonio');
 
@@ -211,6 +214,43 @@ function renderResults(data) {
   if (window.innerWidth < 800) {
     document.getElementById('panel-results').scrollIntoView({ behavior: 'smooth' });
   }
+}
+
+// ─── ITCMD Render ─────────────────────────────────────────────────────────────
+
+function renderItcmd(data) {
+  const d = data.itcmd;
+
+  // Badge de vencedor na sucessão
+  const badge = document.getElementById('itcmd-verdict-badge');
+  const isPJSuc = d.vencedor_sucessao.includes('PJ');
+  badge.textContent = `Sucessão: ${d.vencedor_sucessao}`;
+  badge.className = 'itcmd-badge' + (isPJSuc ? '' : ' pf');
+
+  // Coluna PF
+  document.getElementById('itcmd-base-pf').textContent = fmt(d.base_pf);
+  document.getElementById('itcmd-valor-pf').textContent = fmt(d.itcmd_pf);
+  document.getElementById('itcmd-aliq-pf').textContent = PCT(d.aliquota_efetiva_pf);
+  document.getElementById('itcmd-vfl-suc-pf').textContent = fmt(d.vfl_pos_sucessao_pf);
+
+  // Coluna PJ
+  document.getElementById('itcmd-col-title-pj').textContent = data.nome_pj;
+  document.getElementById('itcmd-base-pj').textContent = fmt(d.base_pj);
+  document.getElementById('itcmd-valor-pj').textContent = fmt(d.itcmd_pj);
+  document.getElementById('itcmd-aliq-pj').textContent = PCT(d.aliquota_efetiva_pj);
+  document.getElementById('itcmd-vfl-suc-pj').textContent = fmt(d.vfl_pos_sucessao_pj);
+
+  // Economia
+  const econEl = document.getElementById('itcmd-economia');
+  econEl.textContent = fmt(Math.abs(d.economia));
+  econEl.className = 'itcmd-economia-valor' + (d.economia < 0 ? ' negativo' : '');
+
+  const pct = d.itcmd_pf > 0
+    ? ((d.economia / d.itcmd_pf) * 100).toFixed(1)
+    : '0.0';
+  document.getElementById('itcmd-economia-sub').textContent = d.economia >= 0
+    ? `A holding economiza ${pct}% de ITCMD vs PF`
+    : `PF paga ${Math.abs(parseFloat(pct)).toFixed(1)}% menos ITCMD que a holding`;
 }
 
 // ─── Chart Tab Switch ─────────────────────────────────────────────────────────
@@ -265,6 +305,8 @@ document.getElementById('calc-form').addEventListener('submit', async (e) => {
       taxa_distribuicao: parseFloat(fd.get('taxa_distribuicao')) / 100,
       usar_deferimento: fd.get('usar_deferimento') === 'on',
       taxa_dividendos: parseFloat(fd.get('taxa_dividendos')) / 100,
+      itcmd_max_rate: parseFloat(fd.get('itcmd_max_rate')) / 100,
+      desconto_quota_holding: parseFloat(fd.get('desconto_quota_holding')) / 100,
     };
 
     const res = await fetch('/api/calcular', {
