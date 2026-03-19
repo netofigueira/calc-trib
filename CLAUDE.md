@@ -98,6 +98,9 @@ VFL = saldo_final_reinvestido + soma_distribuicoes_liquidas_recebidas
 | `taxa_dividendos` | 10% | Alíquota sobre dividendos (Lei 14.754/2023) |
 | `itcmd_max_rate` | 8% | Alíquota ITCMD máxima (reforma propõe 16%) |
 | `desconto_quota_holding` | 20% | Desconto na base ITCMD das quotas |
+| `isento_pf` | false | Aplicação isenta de IR para PF (LCI/LCA/CRI/CRA) |
+| `spread_pj` | 0% | Spread da corretora para PJ (título público: 0,5–1%) |
+| `ibs_cbs_rate` | 0% | Alíquota IBS+CBS sobre receita bruta da PJ |
 
 ### Resposta da API
 
@@ -138,11 +141,35 @@ VFL = saldo_final_reinvestido + soma_distribuicoes_liquidas_recebidas
   - `Documento-1.pdf` — parâmetros técnicos detalhados
   - `workbook_v1 (1).xlsx` — planilha com 5 sheets de referência
 
+### Seletor de Classe de Ativo
+
+O frontend tem um dropdown que aplica presets automáticos nos parâmetros:
+
+| Classe | IR PF | Isento PF? | Spread PJ | Notas |
+|--------|-------|------------|-----------|-------|
+| CDB / Renda Fixa | 15–22,5% | Não | 0% | Caso base |
+| LCI / LCA | 0% | **Sim** | 0% | Isento IR na PF, tributado 34% na PJ |
+| CRI / CRA | 0% | **Sim** | 0% | Idem LCI/LCA |
+| Título Público | 15–22,5% | Não | **0,5%** | PJ sem Tesouro Direto, compra via corretora |
+| Personalizado | Ajuste livre | Ajuste livre | Ajuste livre | Tudo editável |
+
+**Cuidado no frontend:** inputs `disabled` são excluídos do `FormData`.
+Usar classe CSS `.field-locked` (pointer-events: none + opacity) em vez de `disabled` para travar campos visualmente.
+
+### IBS/CBS (Reforma Tributária)
+
+- Slider 0–28%, incide sobre receita bruta da PJ
+- Timeline: 2026 ~1% (teste), pleno 2033 ~26,5%
+- Não afeta PF (rendimentos financeiros não são fato gerador)
+- Coluna dedicada na tabela detalhada PJ
+
 ## Backlog (próximos passos)
 
 - [ ] Gráfico de sensibilidade: múltiplos horizontes simultâneos (5/10/20 anos)
 - [ ] Exportar resultado em PDF
-- [ ] Comparativo por classe de ativo (FII, renda fixa, ações, aluguel direto)
+- [x] ~~Comparativo por classe de ativo (FII, renda fixa, ações, aluguel direto)~~ — implementado como seletor de presets
 - [ ] Autenticação + histórico de simulações salvas
-- [ ] IBS/CBS (IVA Dual) nas receitas de aluguel e serviços da holding
+- [x] ~~IBS/CBS (IVA Dual) nas receitas de aluguel e serviços da holding~~ — implementado
 - [ ] Modo "apresentação" para mostrar ao cliente em reunião
+- [ ] FII como classe de ativo (tributação específica: 20% sobre ganho de capital, dividendos isentos PF)
+- [ ] Aluguel direto como classe de ativo (carnê-leão PF vs holding com IBS/CBS)

@@ -23,16 +23,59 @@ FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
 
 class CalculadoraInput(BaseModel):
     capital_inicial: float = Field(1_000_000, gt=0, description="Capital inicial (R$)")
-    rentabilidade_anual: float = Field(0.10, gt=0, lt=1, description="Taxa de retorno anual, ex: 0.10 = 10%")
+    rentabilidade_anual: float = Field(
+        0.10, gt=0, lt=1, description="Taxa de retorno anual, ex: 0.10 = 10%"
+    )
     horizonte_anos: int = Field(10, ge=1, le=50, description="Horizonte em anos")
-    ir_pf_rate: float = Field(0.15, ge=0.15, le=0.225, description="Alíquota IR PF (15% a 22.5%)")
-    ir_pj_rate: float = Field(0.34, ge=0.0, le=0.50, description="Alíquota IRPJ+CSLL, padrão 34%")
-    overhead_anual: float = Field(70_000, ge=0, description="Custos operacionais anuais da holding (R$)")
-    taxa_distribuicao: float = Field(0.50, ge=0, le=1, description="% do lucro distribuído como dividendos anualmente")
-    usar_deferimento: bool = Field(False, description="PJ com diferimento tributário (compõe sobre bruto, IR só no final)")
-    taxa_dividendos: float = Field(0.10, ge=0, le=0.30, description="Alíquota sobre dividendos (Lei 14.754/2023)")
-    itcmd_max_rate: float = Field(0.08, ge=0, le=0.20, description="Alíquota ITCMD máxima (8% atual, até 16% reforma)")
-    desconto_quota_holding: float = Field(0.20, ge=0, le=0.50, description="Desconto na base ITCMD das quotas da holding")
+    ir_pf_rate: float = Field(
+        0.15,
+        ge=0.0,
+        le=0.225,
+        description="Alíquota IR PF (0% se isento, 15%-22.5% se tributado)",
+    )
+    ir_pj_rate: float = Field(
+        0.34, ge=0.0, le=0.50, description="Alíquota IRPJ+CSLL, padrão 34%"
+    )
+    overhead_anual: float = Field(
+        70_000, ge=0, description="Custos operacionais anuais da holding (R$)"
+    )
+    taxa_distribuicao: float = Field(
+        0.50,
+        ge=0,
+        le=1,
+        description="% do lucro distribuído como dividendos anualmente",
+    )
+    usar_deferimento: bool = Field(
+        False,
+        description="PJ com diferimento tributário (compõe sobre bruto, IR só no final)",
+    )
+    taxa_dividendos: float = Field(
+        0.10, ge=0, le=0.30, description="Alíquota sobre dividendos (Lei 14.754/2023)"
+    )
+    itcmd_max_rate: float = Field(
+        0.08,
+        ge=0,
+        le=0.20,
+        description="Alíquota ITCMD máxima (8% atual, até 16% reforma)",
+    )
+    desconto_quota_holding: float = Field(
+        0.20, ge=0, le=0.50, description="Desconto na base ITCMD das quotas da holding"
+    )
+    isento_pf: bool = Field(
+        False, description="Aplicação isenta de IR para PF (LCI/LCA/CRI/CRA)"
+    )
+    spread_pj: float = Field(
+        0.0,
+        ge=0,
+        le=0.05,
+        description="Spread da corretora para PJ (ex: título público). 0.005 = 0,5%",
+    )
+    ibs_cbs_rate: float = Field(
+        0.0,
+        ge=0,
+        le=0.30,
+        description="Alíquota IBS+CBS sobre receita bruta da PJ (reforma tributária)",
+    )
 
 
 def _fmt_ano(a) -> dict:
@@ -42,6 +85,7 @@ def _fmt_ano(a) -> dict:
         "retorno_bruto": round(a.retorno_bruto, 2),
         "impostos_ganhos": round(a.impostos_ganhos, 2),
         "custos_operacionais": round(a.custos_operacionais, 2),
+        "custos_ibs_cbs": round(a.custos_ibs_cbs, 2),
         "distribuicao_bruta": round(a.distribuicao_bruta, 2),
         "imposto_distribuicao": round(a.imposto_distribuicao, 2),
         "reinvestido": round(a.reinvestido, 2),
@@ -64,6 +108,9 @@ def calcular(data: CalculadoraInput):
         taxa_dividendos=data.taxa_dividendos,
         itcmd_max_rate=data.itcmd_max_rate,
         desconto_quota_holding=data.desconto_quota_holding,
+        isento_pf=data.isento_pf,
+        spread_pj=data.spread_pj,
+        ibs_cbs_rate=data.ibs_cbs_rate,
     )
 
     return {
@@ -108,6 +155,9 @@ def calcular(data: CalculadoraInput):
             "taxa_dividendos": data.taxa_dividendos,
             "itcmd_max_rate": data.itcmd_max_rate,
             "desconto_quota_holding": data.desconto_quota_holding,
+            "isento_pf": data.isento_pf,
+            "spread_pj": data.spread_pj,
+            "ibs_cbs_rate": data.ibs_cbs_rate,
         },
     }
 
@@ -124,4 +174,5 @@ def root():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

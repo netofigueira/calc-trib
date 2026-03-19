@@ -16,10 +16,10 @@ from typing import List
 # Com alíquota_max=8%: faixas viram 2%, 4%, 6%, 8%
 # Com alíquota_max=16% (reforma): viram 4%, 8%, 12%, 16%
 _FAIXAS_ITCMD = [
-    (200_000,       0.25),
-    (600_000,       0.50),
-    (1_500_000,     0.75),
-    (float('inf'),  1.00),
+    (200_000, 0.25),
+    (600_000, 0.50),
+    (1_500_000, 0.75),
+    (float("inf"), 1.00),
 ]
 
 
@@ -60,6 +60,7 @@ class AnoData:
     retorno_bruto: float
     impostos_ganhos: float
     custos_operacionais: float
+    custos_ibs_cbs: float
     distribuicao_bruta: float
     imposto_distribuicao: float
     reinvestido: float
@@ -79,14 +80,14 @@ class CenarioData:
 
 @dataclass
 class ItcmdData:
-    base_pf: float          # saldo_final_pf (patrimônio transmitido)
-    base_pj: float          # saldo_final_pj × (1 - desconto_quota)
+    base_pf: float  # saldo_final_pf (patrimônio transmitido)
+    base_pj: float  # saldo_final_pj × (1 - desconto_quota)
     itcmd_pf: float
     itcmd_pj: float
-    economia: float         # itcmd_pf - itcmd_pj (positivo = holding economiza)
+    economia: float  # itcmd_pf - itcmd_pj (positivo = holding economiza)
     aliquota_efetiva_pf: float
     aliquota_efetiva_pj: float
-    vfl_pos_sucessao_pf: float   # VFL total - ITCMD
+    vfl_pos_sucessao_pf: float  # VFL total - ITCMD
     vfl_pos_sucessao_pj: float
     vencedor_sucessao: str
     diferenca_sucessao: float
@@ -117,6 +118,8 @@ def _calcular_cenario(
     taxa_distribuicao: float,
     nome: str,
     deferimento: bool = False,
+    spread: float = 0.0,
+    ibs_cbs_rate: float = 0.0,
 ) -> CenarioData:
     """
     Calcula o resultado ano a ano para um cenário (PF ou PJ).
@@ -141,24 +144,30 @@ def _calcular_cenario(
     total_dist_liquida = 0.0
     ganhos_diferidos = 0.0
     anos: List[AnoData] = []
+    r_efetiva = r - spread  # PJ com spread tem rentabilidade menor
 
     for ano in range(1, n + 1):
         saldo_inicial = saldo
-        retorno_bruto = saldo * r
+        retorno_bruto = saldo * r_efetiva
+
+        # IBS/CBS sobre receita bruta (só PJ — PF passa ibs_cbs_rate=0)
+        custos_ibs_cbs = retorno_bruto * ibs_cbs_rate
 
         if deferimento:
             # Lucro bruto compõe sem tributação imediata; overhead sai do saldo
             impostos_ano = 0.0
             lucro_pos_imposto = retorno_bruto
-            ganhos_diferidos += max(0.0, retorno_bruto - overhead_anual)
+            ganhos_diferidos += max(
+                0.0, retorno_bruto - overhead_anual - custos_ibs_cbs
+            )
         else:
             # Tributo anual sobre ganhos
             impostos_ano = retorno_bruto * taxa_imposto_ganhos
             total_impostos += impostos_ano
             lucro_pos_imposto = retorno_bruto - impostos_ano
 
-        # Overhead reduz o lucro disponível (pode ser negativo — corrói o principal)
-        lucro_disponivel = lucro_pos_imposto - overhead_anual
+        # Overhead + IBS/CBS reduzem o lucro disponível
+        lucro_disponivel = lucro_pos_imposto - overhead_anual - custos_ibs_cbs
 
         # Distribuição anual de dividendos (só quando há lucro positivo disponível)
         if lucro_disponivel > 0 and taxa_distribuicao > 0:
@@ -173,18 +182,21 @@ def _calcular_cenario(
         reinvestido = lucro_disponivel - dist_bruta - imp_div
         saldo = max(0.0, saldo_inicial + reinvestido)
 
-        anos.append(AnoData(
-            ano=ano,
-            saldo_inicial=saldo_inicial,
-            retorno_bruto=retorno_bruto,
-            impostos_ganhos=impostos_ano,
-            custos_operacionais=overhead_anual,
-            distribuicao_bruta=dist_bruta,
-            imposto_distribuicao=imp_div,
-            reinvestido=reinvestido,
-            saldo_final=saldo,
-            patrimonio_acumulado=saldo + total_dist_liquida,
-        ))
+        anos.append(
+            AnoData(
+                ano=ano,
+                saldo_inicial=saldo_inicial,
+                retorno_bruto=retorno_bruto,
+                impostos_ganhos=impostos_ano,
+                custos_operacionais=overhead_anual,
+                custos_ibs_cbs=custos_ibs_cbs,
+                distribuicao_bruta=dist_bruta,
+                imposto_distribuicao=imp_div,
+                reinvestido=reinvestido,
+                saldo_final=saldo,
+                patrimonio_acumulado=saldo + total_dist_liquida,
+            )
+        )
 
     # Liquidação final no modo deferimento: paga IRPJ sobre ganho total acumulado
     if deferimento:
@@ -222,18 +234,25 @@ def calcular_comparativo(
     taxa_dividendos: float = 0.10,
     itcmd_max_rate: float = 0.08,
     desconto_quota_holding: float = 0.20,
+    isento_pf: bool = False,
+    spread_pj: float = 0.0,
+    ibs_cbs_rate: float = 0.0,
 ) -> ResultadoComparativo:
+    # Se isento PF (LCI/LCA/CRI/CRA), zera alíquota de IR sobre ganhos
+    taxa_ir_pf_efetiva = 0.0 if isento_pf else ir_pf_rate
 
     pf = _calcular_cenario(
         capital=capital_inicial,
         r=rentabilidade_anual,
         n=horizonte_anos,
-        taxa_imposto_ganhos=ir_pf_rate,
+        taxa_imposto_ganhos=taxa_ir_pf_efetiva,
         overhead_anual=0.0,
         taxa_dividendos=taxa_dividendos,
         taxa_distribuicao=taxa_distribuicao,
         nome="Pessoa Física",
         deferimento=False,
+        spread=0.0,
+        ibs_cbs_rate=0.0,
     )
 
     pj_nome = "PJ/Holding (Deferimento)" if usar_deferimento else "PJ/Holding"
@@ -247,6 +266,8 @@ def calcular_comparativo(
         taxa_distribuicao=taxa_distribuicao,
         nome=pj_nome,
         deferimento=usar_deferimento,
+        spread=spread_pj,
+        ibs_cbs_rate=ibs_cbs_rate,
     )
 
     diferenca_absoluta = pj.vfl - pf.vfl
@@ -255,8 +276,12 @@ def calcular_comparativo(
 
     retorno_total_pf = sum(a.retorno_bruto for a in pf.anos)
     retorno_total_pj = sum(a.retorno_bruto for a in pj.anos)
-    tax_drag_pf = (pf.total_impostos / retorno_total_pf * 100) if retorno_total_pf > 0 else 0.0
-    tax_drag_pj = (pj.total_impostos / retorno_total_pj * 100) if retorno_total_pj > 0 else 0.0
+    tax_drag_pf = (
+        (pf.total_impostos / retorno_total_pf * 100) if retorno_total_pf > 0 else 0.0
+    )
+    tax_drag_pj = (
+        (pj.total_impostos / retorno_total_pj * 100) if retorno_total_pj > 0 else 0.0
+    )
 
     # ── ITCMD progressivo ────────────────────────────────────────────────────
     # Base PF: patrimônio total no portfólio ao final (saldo reinvestido)
@@ -283,7 +308,9 @@ def calcular_comparativo(
         aliquota_efetiva_pj=aliq_ef_pj,
         vfl_pos_sucessao_pf=vfl_pos_suc_pf,
         vfl_pos_sucessao_pj=vfl_pos_suc_pj,
-        vencedor_sucessao="PJ/Holding" if vfl_pos_suc_pj > vfl_pos_suc_pf else "Pessoa Física",
+        vencedor_sucessao="PJ/Holding"
+        if vfl_pos_suc_pj > vfl_pos_suc_pf
+        else "Pessoa Física",
         diferenca_sucessao=vfl_pos_suc_pj - vfl_pos_suc_pf,
     )
 

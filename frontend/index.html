@@ -59,6 +59,41 @@
         </div>
 
         <div class="form-section">
+          <h3>Classe de Ativo</h3>
+
+          <div class="field">
+            <label for="classe_ativo">Tipo de Investimento</label>
+            <select id="classe_ativo" name="classe_ativo">
+              <option value="cdb" selected>CDB / Renda Fixa Tributada</option>
+              <option value="lci_lca">LCI / LCA (Isento PF)</option>
+              <option value="cri_cra">CRI / CRA (Isento PF)</option>
+              <option value="titulo_publico">Título Público (Tesouro)</option>
+              <option value="personalizado">Personalizado</option>
+            </select>
+          </div>
+
+          <div class="field field-toggle">
+            <label class="toggle-label">
+              <input type="checkbox" id="isento_pf" name="isento_pf" />
+              <span class="toggle-track"></span>
+              Isento IR para Pessoa Física
+            </label>
+            <small>LCI, LCA, CRI, CRA — rendimento isento de IR na PF.</small>
+          </div>
+
+          <div class="field" id="field-spread-pj">
+            <label for="spread_pj">
+              Spread Corretora PJ
+              <span class="field-value" id="lbl-spread">0%</span>
+            </label>
+            <input type="range" id="spread_pj" name="spread_pj"
+              min="0" max="2" step="0.1" value="0"
+              oninput="document.getElementById('lbl-spread').textContent = this.value + '%'" />
+            <small>PJ não acessa Tesouro Direto — compra via corretora com spread de 0,5% a 1%.</small>
+          </div>
+        </div>
+
+        <div class="form-section">
           <h3>Parâmetros Tributários</h3>
 
           <div class="field">
@@ -122,6 +157,17 @@
               Diferimento Tributário
             </label>
             <small>PJ compõe sobre lucro bruto; IRPJ pago apenas na liquidação final.</small>
+          </div>
+
+          <div class="field">
+            <label for="ibs_cbs_rate">
+              IBS + CBS (Reforma Tributária)
+              <span class="field-value" id="lbl-ibs">0%</span>
+            </label>
+            <input type="range" id="ibs_cbs_rate" name="ibs_cbs_rate"
+              min="0" max="28" step="0.5" value="0"
+              oninput="document.getElementById('lbl-ibs').textContent = this.value + '%'" />
+            <small>Incide sobre receitas da PJ (aluguéis, serviços). 2026: ~1% · Pleno (2033): ~26,5%</small>
           </div>
         </div>
 
@@ -319,6 +365,7 @@
                   <th>Retorno Bruto</th>
                   <th>IRPJ/CSLL</th>
                   <th>Overhead</th>
+                  <th>IBS/CBS</th>
                   <th>Dist. Dividendos</th>
                   <th>Imp. Dividendos</th>
                   <th>Reinvestido</th>
